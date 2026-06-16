@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to a Siemens S7 PLC",
+        "description": "Configure the PLC connection. You can add tags (entities) afterwards via the integration's \"Configure\" button.",
+        "data": {
+          "name": "Name",
+          "host": "Host",
+          "plc_type": "PLC type",
+          "scan_interval": "Scan interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the PLC. Check the host, PLC type and that PUT/GET communication is enabled."
+    },
+    "abort": {
+      "already_configured": "This PLC is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Manage PLC tags",
+        "menu_options": {
+          "add_entity": "Add a tag",
+          "remove_entity": "Remove tags"
+        }
+      },
+      "add_entity": {
+        "title": "Add a tag",
+        "description": "Choose the type of entity to create.",
+        "data": {
+          "platform": "Entity type"
+        }
+      },
+      "entity_details": {
+        "title": "Tag details ({platform})",
+        "description": "Define where the value lives in the PLC. Pick the memory area; the data block (DB) is only used for the 'db' area. The bit is only used for bool data types.",
+        "data": {
+          "name": "Name",
+          "area": "Memory area (db / input / output / memory)",
+          "db": "Data block (DB area only)",
+          "byte": "Byte offset",
+          "bit": "Bit (0-7, bool only)",
+          "data_type": "Data type",
+          "unit": "Unit of measurement",
+          "device_class": "Device class",
+          "state_class": "State class",
+          "min": "Minimum value",
+          "max": "Maximum value",
+          "step": "Step",
+          "mode": "Display mode",
+          "press_value": "Value written on press"
+        }
+      },
+      "remove_entity": {
+        "title": "Remove tags",
+        "description": "Select the tags to remove.",
+        "data": {
+          "remove": "Tags to remove"
+        }
+      }
+    },
+    "error": {
+      "invalid_entity": "The tag definition is invalid. Check the addresses and data type."
+    }
+  }
+}

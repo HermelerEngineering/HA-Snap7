@@ -1,0 +1,5 @@
+# No services in the read-only v1.
+#
+# Write support (switch / number / button platforms and an explicit write
+# service) is planned for a future version. Service definitions will be added
+# here once writing is implemented.

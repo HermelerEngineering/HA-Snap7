@@ -1,0 +1,136 @@
+# Example tag definition for the S7 PLC integration.
+#
+# Place this file under your Home Assistant config directory, e.g.
+#   /config/s7_plc/main_plc.yaml
+# and set the "YAML path" in the config flow to "s7_plc/main_plc.yaml".
+#
+# The "plc" block below is optional and only used for documentation /
+# standalone validation. The connection parameters that the integration
+# actually uses come from the config flow (host, plc_type, scan_interval).
+
+plc:
+  name: "Main PLC"
+  host: "192.168.84.12"
+  plc_type: "s7_1200"      # one of: s7_1200, s7_1500, s7_300
+  scan_interval: 1         # Seconds between updates
+
+entities:
+  - key: machine_running
+    name: "Machine Running"
+    platform: binary_sensor
+    db: 10
+    byte: 0
+    bit: 0
+    data_type: bool
+    device_class: running
+
+  - key: fault_active
+    name: "Fault Active"
+    platform: binary_sensor
+    db: 10
+    byte: 0
+    bit: 1
+    data_type: bool
+    device_class: problem
+
+  - key: actual_speed
+    name: "Actual Speed"
+    platform: sensor
+    db: 10
+    byte: 2
+    data_type: real
+    unit: "m/min"
+    state_class: measurement
+
+  - key: actual_count
+    name: "Actual Count"
+    platform: sensor
+    db: 10
+    byte: 6
+    data_type: dint
+    state_class: measurement
+
+  # ---------------------------------------------------------------------------
+  # WRITE entities (switch / number / button).
+  #
+  # ⚠️  Point these at addresses you KNOW are safe to write to. Writing to a
+  #     live machine control can physically start/stop equipment. The byte
+  #     offsets below are placeholders — adjust them to a spare test area.
+  # ---------------------------------------------------------------------------
+
+  # switch -> writes a single bool bit
+  - key: enable_command
+    name: "Enable Command"
+    platform: switch
+    db: 10
+    byte: 10
+    bit: 0
+    data_type: bool
+
+  # number -> writes a numeric value (byte/int/uint/dint/real)
+  - key: speed_setpoint
+    name: "Speed Setpoint"
+    platform: number
+    db: 10
+    byte: 12
+    data_type: real
+    unit: "m/min"
+    min: 0
+    max: 100
+    step: 0.5
+    mode: box
+
+  # button -> writes a fixed value on press (press_value; defaults to True for bool)
+  - key: reset_command
+    name: "Reset Command"
+    platform: button
+    db: 10
+    byte: 16
+    bit: 0
+    data_type: bool
+    press_value: true
+
+  # ---------------------------------------------------------------------------
+  # Direct I/O and memory access (no DB).
+  #
+  # "area" selects the memory area; "db" is only used for area: db.
+  #   input  -> Inputs   I / E  (e.g. byte 0 bit 0 = I0.0 / E0.0)
+  #   output -> Outputs  Q / A  (e.g. byte 0 bit 0 = Q0.0 / A0.0)
+  #   memory -> Merkers  M      (e.g. byte 0 bit 0 = M0.0,  byte 100 = MD100)
+  #
+  # ⚠️  Writing to outputs physically actuates the PLC outputs.
+  # ---------------------------------------------------------------------------
+
+  - key: input_start_button
+    name: "Start Button (input)"
+    platform: binary_sensor
+    area: input
+    byte: 0
+    bit: 0
+    data_type: bool
+
+  - key: output_lamp
+    name: "Lamp (output)"
+    platform: switch
+    area: output
+    byte: 0
+    bit: 0
+    data_type: bool
+
+  - key: memory_flag
+    name: "Flag M10.0"
+    platform: binary_sensor
+    area: memory
+    byte: 10
+    bit: 0
+    data_type: bool
+
+  - key: memory_setpoint
+    name: "Setpoint MD100"
+    platform: number
+    area: memory
+    byte: 100
+    data_type: real
+    min: 0
+    max: 100
+    step: 0.5
