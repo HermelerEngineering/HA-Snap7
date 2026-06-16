@@ -14,7 +14,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 # Light blue, in the Siemens "bright petrol" family.
-BG_COLOR = (0, 166, 206, 255)
+BG_COLOR = (7, 151, 149, 255)
 TEXT_COLOR = (255, 255, 255, 255)
 TEXT = "S7"
 
