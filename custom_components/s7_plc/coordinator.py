@@ -8,6 +8,7 @@ from ``coordinator.data``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -43,6 +44,11 @@ class S7PlcCoordinator(DataUpdateCoordinator[dict[str, object]]):
         self._config = config
         self._entities = entities
         self._client = S7PlcClient(config)
+        # snap7's client is not thread-safe and shares one TCP connection, so
+        # every PLC operation (poll reads and writes) must be serialized.
+        # Without this, a write overlapping a poll corrupts the S7 protocol
+        # stream ("Invalid TPKT version" / "Receive timeout").
+        self._lock = asyncio.Lock()
         # Only readable entities (everything except stateless buttons) take part
         # in the polling read plan.
         self._readable = [e for e in entities if e.platform in READABLE_PLATFORMS]
@@ -67,7 +73,8 @@ class S7PlcCoordinator(DataUpdateCoordinator[dict[str, object]]):
     async def async_shutdown(self) -> None:
         """Disconnect the PLC client on unload."""
         await super().async_shutdown()
-        await self.hass.async_add_executor_job(self._client.disconnect)
+        async with self._lock:
+            await self.hass.async_add_executor_job(self._client.disconnect)
 
     async def _async_update_data(self) -> dict[str, object]:
         """Fetch all planned DB ranges and parse every entity value.
@@ -76,12 +83,13 @@ class S7PlcCoordinator(DataUpdateCoordinator[dict[str, object]]):
         marks the coordinator (and therefore all entities) unavailable; the
         next poll will attempt to reconnect.
         """
-        try:
-            return await self.hass.async_add_executor_job(self._poll)
-        except PlcConnectionError as err:
-            # Drop the connection so the next cycle performs a clean reconnect.
-            await self.hass.async_add_executor_job(self._client.disconnect)
-            raise UpdateFailed(str(err)) from err
+        async with self._lock:
+            try:
+                return await self.hass.async_add_executor_job(self._poll)
+            except PlcConnectionError as err:
+                # Drop the connection so the next cycle performs a clean reconnect.
+                await self.hass.async_add_executor_job(self._client.disconnect)
+                raise UpdateFailed(str(err)) from err
 
     def _poll(self) -> dict[str, object]:
         """Blocking poll: connect if needed, read DBs, parse values."""
@@ -136,14 +144,19 @@ class S7PlcCoordinator(DataUpdateCoordinator[dict[str, object]]):
 
     async def async_write_bool(self, entity: EntityDefinition, value: bool) -> None:
         """Write a single bit to the PLC and refresh state."""
-        await self.hass.async_add_executor_job(
-            self._client.write_bit,
-            entity.area,
-            entity.db,
-            entity.byte,
-            entity.bit,
-            value,
-        )
+        async with self._lock:
+            try:
+                await self.hass.async_add_executor_job(
+                    self._client.write_bit,
+                    entity.area,
+                    entity.db,
+                    entity.byte,
+                    entity.bit,
+                    value,
+                )
+            except PlcConnectionError:
+                await self.hass.async_add_executor_job(self._client.disconnect)
+                raise
         _LOGGER.debug("Wrote bool %s to %s", value, entity.key)
         await self.async_request_refresh()
 
@@ -151,9 +164,14 @@ class S7PlcCoordinator(DataUpdateCoordinator[dict[str, object]]):
         """Serialize and write a numeric value to the PLC and refresh state."""
         raw = self._unapply_scale(entity, value)
         data = serialize(entity.data_type, raw)
-        await self.hass.async_add_executor_job(
-            self._client.write, entity.area, entity.db, entity.byte, data
-        )
+        async with self._lock:
+            try:
+                await self.hass.async_add_executor_job(
+                    self._client.write, entity.area, entity.db, entity.byte, data
+                )
+            except PlcConnectionError:
+                await self.hass.async_add_executor_job(self._client.disconnect)
+                raise
         _LOGGER.debug("Wrote number %s (raw %s) to %s", value, raw, entity.key)
         await self.async_request_refresh()
 

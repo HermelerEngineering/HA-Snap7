@@ -8,5 +8,5 @@
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/HermelerEngineering/HA-Snap7/issues",
   "requirements": ["python-snap7==3.0.0"],
-  "version": "0.1.2"
+  "version": "0.1.3"
 }
